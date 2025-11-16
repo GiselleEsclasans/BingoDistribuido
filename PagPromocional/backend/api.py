@@ -2,6 +2,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
+from urllib.parse import quote
 import os
 
 app = FastAPI(title="BINGODistribuido API", description="API para el sistema Bingo Distribuido")
@@ -87,7 +90,7 @@ async def obtener_terminos():
     return {
         "titulo": "Términos y Condiciones",
         "contenido": """
-        <h4>1. Aceptación de Términos</h4>
+        <h4>1. Aceptación de Términos </h4>
         <p>Al utilizar Bingo Distribuido, aceptas cumplir con estos términos y condiciones:</p>
         
         <h4>2. Uso del Sistema</h4>
@@ -106,8 +109,48 @@ async def obtener_video():
     return {
         "titulo": "Video Promocional",
         "descripcion": "Demostración del sistema de bingo desarrollado con Pygame",
-        "url": "http://localhost:8001/static/videos/bingo-promo.mp4"
+        "url": "http://localhost:8000/static/videos/bingo-promo.mp4"
     }
+
+@app.get("/videos/list")
+async def listar_videos():
+    videos_dir = Path("static/videos")
+    print(videos_dir)
+    if not videos_dir.exists():
+        raise HTTPException(status_code=404, detail="Directorio de videos no encontrado")
+
+    videos = []
+    for video_file in videos_dir.glob("*.mp4"):
+        videos.append({
+            "nombre": video_file.name,
+            "url": f"http://localhost:8000/videos/stream/{quote(video_file.name)}",
+            "url_directa": f"http://localhost:8000/static/videos/{quote(video_file.name)}",
+            "tamaño_mb": round(video_file.stat().st_size / (1024 * 1024), 2)
+        })
+
+
+
+    return {
+        "total": len(videos),
+        "videos": videos
+    }
+
+
+
+
+@app.get("/videos/stream/{filename}")
+async def servir_video(filename: str):
+    video_path = Path("static/videos") / filename
+    if not video_path.exists() or not video_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Video '{filename}' no encontrado")
+
+    return FileResponse(
+        path=str(video_path),
+        media_type="video/mp4",
+        filename=filename
+    )
+
+
 
 @app.get("/instalacion")
 async def obtener_instrucciones_instalacion():
@@ -145,6 +188,9 @@ async def obtener_instrucciones_uso():
 @app.get("/")
 async def root():
     return {"message": "API de BINGO Distribuido funcionando correctamente"}
+
+
+
 
 if __name__ == "__main__":
     import uvicorn

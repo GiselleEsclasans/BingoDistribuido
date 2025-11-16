@@ -1,3 +1,5 @@
 fastapi==0.104.1
 uvicorn==0.24.0
-python-multipart==0.0.6
+pydantic==2.6.0
+# Optional (used by FastAPI for form/file parsing). Keep if you use file uploads in the future:
+# python-multipart==0.0.6

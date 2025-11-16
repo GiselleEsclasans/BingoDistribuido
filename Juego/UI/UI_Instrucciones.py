@@ -29,7 +29,6 @@ class UI_Instrucciones(View):
     def render(self, surface):
         surface.fill(self.RED)
 
-        #BOTÓN REGRESAR ------------------------------------------
         back_rect = pygame.Rect(20, 20, 100, 48)
         try:
             pygame.draw.rect(surface, self.WHITE, back_rect, border_radius=12)
