@@ -1,6 +1,22 @@
 import pygame
+import os
 from UI_manager import View
 
+def get_asset_path(filename):
+    """Obtener la ruta correcta para los archivos de assets"""
+    possible_paths = [
+        filename, 
+        os.path.join('Assets', filename),  
+        os.path.join('..', 'Assets', filename),  
+        os.path.join('Juego', 'Assets', filename), 
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    
+    print(f"⚠️ No se encontró: {filename}")
+    return filename
 
 class UI_Video(View):
     def __init__(self, manager):
@@ -78,17 +94,17 @@ class UI_Video(View):
         except Exception:
             return pygame.Surface((1, 1))
 
-        
-
     def load_video(self):
         """Cargar el video desde el archivo"""
-        import os
-
         try:
             Movie = getattr(pygame, 'movie', None)
-            video_path = 'Bingo.mpg'
+            video_path = get_asset_path('Bingo.mpg') 
             abs_path = os.path.abspath(video_path)
+            
+            print(f"🎥 Intentando cargar video desde: {abs_path}")
+            
             if not os.path.exists(abs_path):
+                print(f"❌ Archivo de video no encontrado: {abs_path}")
                 self.movie = None
                 self.clip = None
                 return
@@ -100,33 +116,33 @@ class UI_Video(View):
                         self.movie.set_display(pygame.Rect(150, 150, self.movie_size[0], self.movie_size[1]))
                     except Exception:
                         pass
-                    
+                    print("✅ Video cargado con pygame.movie")
                 except Exception as e:
-                 
+                    print(f"❌ Error al cargar video con pygame.movie: {e}")
                     self.movie = None
             else:
-                
+                print("ℹ️ pygame.movie no disponible, intentando con moviepy...")
                 try:
                     try:
                         from moviepy import VideoFileClip
-                    except Exception:
+                    except ImportError:
                         from moviepy.editor import VideoFileClip
 
                     try:
                         self.clip = VideoFileClip(abs_path)
                         self.movie = 'moviepy'
                         self.clip_time = 0.0
-                     
+                        print("✅ Video cargado con moviepy")
                     except Exception as e:
-                       
+                        print(f"❌ Error al cargar video con moviepy: {e}")
                         self.clip = None
                         self.movie = None
                 except Exception as e:
-            
+                    print(f"❌ Error importando moviepy: {e}")
                     self.clip = None
                     self.movie = None
         except pygame.error as e:
-    
+            print(f"❌ Error de pygame al cargar video: {e}")
             self.movie = None
 
     def handle_event(self, event):
@@ -154,13 +170,14 @@ class UI_Video(View):
                     if callable(play_fn):
                         play_fn()
                         self.video_playing = True
-                      
+                        print("▶️ Reproduciendo video")
                     else:
-                        print('Reproducción no soportada por el backend de video.')
+                        print('❌ Reproducción no soportada por el backend de video.')
                 except Exception as e:
-                    print(f'Error al reproducir el video: {e}')
+                    print(f'❌ Error al reproducir el video: {e}')
             else:
                 self.video_playing = True
+                print("▶️ Reproduciendo video con moviepy")
 
     def stop_video(self):
         """Detener el video"""
@@ -171,16 +188,17 @@ class UI_Video(View):
                     if callable(stop_fn):
                         stop_fn()
                     self.video_playing = False
-                   
+                    print("⏹️ Video detenido")
                 except Exception as e:
-                    print(f'Error al detener el video: {e}')
+                    print(f'❌ Error al detener el video: {e}')
             else:
                 self.video_playing = False
                 try:
                     self.clip_time = 0.0
                 except Exception:
                     pass
-             
+                print("⏹️ Video detenido (moviepy)")
+
     def pause_video(self):
         """Pausar el video"""
         if self.movie and self.video_playing:
@@ -190,12 +208,12 @@ class UI_Video(View):
                     if callable(pause_fn):
                         pause_fn()
                     self.video_playing = False
-                   
+                    print("⏸️ Video pausado")
                 except Exception as e:
-                    print(f'Error al pausar el video: {e}')
+                    print(f'❌ Error al pausar el video: {e}')
             else:
                 self.video_playing = False
-         
+                print("⏸️ Video pausado (moviepy)")
 
     def render(self, surface):
         surface.fill(self.RED)
@@ -268,10 +286,10 @@ class UI_Video(View):
                     dark_overlay.fill((0, 0, 0, 128))
                     surface.blit(dark_overlay, (video_rect.x, video_rect.y))
             except Exception as e:
-                print(f'Error al renderizar frame con moviepy: {e}')
+                print(f'❌ Error al renderizar frame con moviepy: {e}')
 
         if not self.movie:
-            error_text = self._render_text('❌ Error al cargar el video', self.content_font, self.RED if False else self.WHITE)
+            error_text = self._render_text('❌ Error al cargar el video', self.content_font, self.WHITE)
             surface.blit(error_text, (video_rect.x + (video_rect.w - error_text.get_width()) // 2,
                                    video_rect.y + (video_rect.h - error_text.get_height()) // 2))
         elif not self.video_playing:
@@ -292,8 +310,9 @@ class UI_Video(View):
                         if self.clip_time >= self.clip.duration:
                             self.clip_time = 0.0
                             self.video_playing = False
+                            print("🔄 Video terminado, reiniciando...")
                     except Exception as e:
-                        print(f'Error al avanzar tiempo del clip: {e}')
+                        print(f'❌ Error al avanzar tiempo del clip: {e}')
                 else:
                     busy_fn = getattr(self.movie, 'get_busy', None)
                     if callable(busy_fn):
@@ -302,5 +321,6 @@ class UI_Video(View):
                             rewind_fn = getattr(self.movie, 'rewind', None)
                             if callable(rewind_fn):
                                 rewind_fn()
+                            print("🔄 Video terminado, reiniciando...")
             except Exception as e:
-                print(f'Error al verificar estado del video: {e}')
+                print(f'❌ Error al verificar estado del video: {e}')

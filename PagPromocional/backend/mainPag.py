@@ -2,10 +2,10 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import os 
 
 app = FastAPI(title="BINGODistribuido API", description="API para el sistema Bingo Distribuido")
 
-# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,24 +14,57 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_directory = "static"
+if not os.path.exists(static_directory):
+    os.makedirs(static_directory, exist_ok=True)
+    print(f"✅ Directorio '{static_directory}' creado exitosamente")
+    
+    videos_dir = os.path.join(static_directory, "videos")
+    os.makedirs(videos_dir, exist_ok=True)
+    print(f"✅ Subdirectorio 'videos' creado en {videos_dir}")
 
-# Modelo de datos
+app.mount("/static", StaticFiles(directory=static_directory), name="static")
+
 class UsuarioRegistro(BaseModel):
     username: str
     email: str
     password: str
 
-# Endpoint de registro
+USUARIOS = {}
+
 @app.post("/registro")
 async def registrar_usuario(usuario: UsuarioRegistro):
+    USUARIOS[usuario.username] = {
+        "email": usuario.email,
+        "password": usuario.password,
+        "online": False
+    }
+
     return {
         "message": f"Usuario {usuario.username} registrado exitosamente en Bingo Distribuido!",
         "email": usuario.email,
         "status": "active"
     }
 
-# Endpoint de términos y condiciones
+
+class SetOnlineModel(BaseModel):
+    username: str
+    online: bool
+
+
+@app.post('/set_online')
+async def set_online(data: SetOnlineModel):
+    user = USUARIOS.get(data.username)
+    if not user:
+        return {"status": "error", "message": "Usuario no registrado"}
+    user['online'] = data.online
+    return {"status": "success", "username": data.username, "online": data.online}
+
+
+@app.get('/users')
+async def listar_usuarios():
+    return {"users": [{"username": k, "email": v['email'], "online": v['online']} for k, v in USUARIOS.items()]}
+
 @app.get("/terminos")
 async def obtener_terminos():
     return {
@@ -48,19 +81,16 @@ async def obtener_terminos():
         
         <h4>4. Propiedad Intelectual</h4>
         <p>Todo el código y contenido de Bingo Distribuido es propiedad de la Unimet como proyecto académico.</p>
-        
-      
-        """,
-        
+        """
     }
 
-# Endpoint del video
 @app.get("/video")
 async def obtener_video():
     return {
         "titulo": "Video Promocional",
         "descripcion": "Demostración del sistema de bingo desarrollado con Pygame",
-        "url": "http://localhost:8000/static/videos/bingo-promo.mp4"
+        "url": "http://localhost:8000/static/videos/bingo-promo.mp4",
+        "nota": "Coloca tu video en la carpeta static/videos/"
     }
 
 @app.get("/instalacion")
@@ -96,11 +126,10 @@ async def obtener_instrucciones_uso():
         ]
     }
 
-# Endpoint de salud
 @app.get("/")
 async def root():
     return {"message": "API de BINGO Distribuido funcionando correctamente"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)  

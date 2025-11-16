@@ -1,11 +1,10 @@
 import pygame
 from UI_manager import View
 
-
 class UI_Configuraciones(View):
     def __init__(self, manager):
         super().__init__(manager)
-   
+    
         self.RED = tuple(int('a01515'[i:i+2], 16) for i in (0, 2, 4))
         self.YELLOW = tuple(int('ffa345'[i:i+2], 16) for i in (0, 2, 4))
         self.WHITE = (255, 255, 255)
@@ -32,7 +31,12 @@ class UI_Configuraciones(View):
         
         self.use_graphic_fallback = self.emoji_font is None
 
-        self.options = {'numero_jugadores': 4, 'modo': 'normal'}
+        if not hasattr(self.manager, 'game_settings'):
+            self.manager.game_settings = {
+                'numero_jugadores': 4,
+                'modo': 'regular' 
+            }
+        
         self.players_buttons = [2, 4, 6, 8]
         self.mode_buttons = ['Rápido', 'Regular', 'Blackout']
         
@@ -60,14 +64,14 @@ class UI_Configuraciones(View):
             for i, count in enumerate(self.players_buttons):
                 rect = pygame.Rect(start_x + i*80, btn_y, 60, 40)
                 if rect.collidepoint(mx, my):
-                    self.options['numero_jugadores'] = count
+                    self.manager.game_settings['numero_jugadores'] = count
 
             mode_label_y = btn_y + 60
             btn_y2 = mode_label_y + self.option_font.get_height() + 8
             for i, mode in enumerate(self.mode_buttons):
                 rect = pygame.Rect(box_x + padding + i*120, btn_y2, 100, 40)
                 if rect.collidepoint(mx, my):
-                    self.options['modo'] = mode
+                    self.manager.game_settings['modo'] = mode.lower() 
 
     def toggle_music(self):
         """Activa o desactiva la música de fondo"""
@@ -105,7 +109,6 @@ class UI_Configuraciones(View):
         box_x = (800 - inner_width) // 2
         box_y = 140
 
-
         try:
             shadow = pygame.Surface((inner_width, inner_height), pygame.SRCALPHA)
             shadow.fill((0, 0, 0, 80))
@@ -131,24 +134,17 @@ class UI_Configuraciones(View):
             surface.blit(music_text, (music_x, music_y))
         else:
             if self.music_enabled:
-                center_x = music_rect.centerx
-                center_y = music_rect.centery
+                center_x, center_y = music_rect.centerx, music_rect.centery
                 pygame.draw.circle(surface, self.RED, (center_x, center_y), 12, 2)
-                pygame.draw.line(surface, self.RED, (center_x + 8, center_y - 8), 
-                                (center_x + 15, center_y - 15), 2)
-                pygame.draw.line(surface, self.RED, (center_x + 8, center_y + 8), 
-                                (center_x + 15, center_y + 15), 2)
-                pygame.draw.line(surface, self.RED, (center_x - 5, center_y - 5), 
-                                (center_x - 5, center_y + 5), 2)
+                pygame.draw.line(surface, self.RED, (center_x + 8, center_y - 8), (center_x + 15, center_y - 15), 2)
+                pygame.draw.line(surface, self.RED, (center_x + 8, center_y + 8), (center_x + 15, center_y + 15), 2)
+                pygame.draw.line(surface, self.RED, (center_x - 5, center_y - 5), (center_x - 5, center_y + 5), 2)
             else:
-                center_x = music_rect.centerx
-                center_y = music_rect.centery
+                center_x, center_y = music_rect.centerx, music_rect.centery
                 pygame.draw.circle(surface, self.RED, (center_x, center_y), 12, 2)
+                pygame.draw.line(surface, self.RED, (center_x - 8, center_y - 8), (center_x + 8, center_y + 8), 2)
+                pygame.draw.line(surface, self.RED, (center_x - 8, center_y + 8), (center_x + 8, center_y - 8), 2)
 
-                pygame.draw.line(surface, self.RED, (center_x - 8, center_y - 8), 
-                                (center_x + 8, center_y + 8), 2)
-                pygame.draw.line(surface, self.RED, (center_x - 8, center_y + 8), 
-                                (center_x + 8, center_y - 8), 2)
 
         players_label = self.option_font.render('Número de Jugadores:', True, self.RED)
         label_x = box_x + padding
@@ -159,7 +155,9 @@ class UI_Configuraciones(View):
         btn_y = label_y + players_label.get_height() + 8
         for i, count in enumerate(self.players_buttons):
             rect = pygame.Rect(start_x + i*80, btn_y, 60, btn_h)
-            is_selected = self.options['numero_jugadores'] == count
+
+            is_selected = self.manager.game_settings['numero_jugadores'] == count
+            
             btn_color = self.RED if is_selected else self.YELLOW
             try:
                 pygame.draw.rect(surface, btn_color, rect, border_radius=8)
@@ -178,7 +176,9 @@ class UI_Configuraciones(View):
         btn_y2 = mode_label_y + mode_label.get_height() + 8
         for i, mode in enumerate(self.mode_buttons):
             rect = pygame.Rect(box_x + padding + i*120, btn_y2, 100, btn_h)
-            is_selected = self.options['modo'] == mode
+            
+            is_selected = self.manager.game_settings['modo'] == mode.lower() 
+            
             btn_color = self.RED if is_selected else self.YELLOW
             try:
                 pygame.draw.rect(surface, btn_color, rect, border_radius=8)

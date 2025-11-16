@@ -1,17 +1,12 @@
 import pygame
 
-
 class View:
-    """Base class for views."""
     def __init__(self, manager):
         self.manager = manager
-
     def handle_event(self, event):
         pass
-
     def update(self, dt):
         pass
-
     def render(self, surface):
         pass
 
@@ -27,6 +22,10 @@ class UIManager:
     def set_view(self, name):
         if name in self.views:
             self.current = self.views[name]
+
+    def get_view(self, name):
+        """Obtiene una instancia de vista por su nombre."""
+        return self.views.get(name)
 
     def handle_event(self, event):
         if self.current:

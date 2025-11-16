@@ -1,11 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import os
 
 app = FastAPI(title="BINGODistribuido API", description="API para el sistema Bingo Distribuido")
 
-# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,24 +14,74 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_directory = "static"
+if not os.path.exists(static_directory):
+    os.makedirs(static_directory, exist_ok=True)
+    videos_dir = os.path.join(static_directory, "videos")
+    os.makedirs(videos_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_directory), name="static")
 
-# Modelo de datos
 class UsuarioRegistro(BaseModel):
     username: str
     email: str
     password: str
 
-# Endpoint de registro
+class UsuarioLogin(BaseModel): 
+    username: str
+    password: str
+
+class SetOnlineModel(BaseModel):
+    username: str
+    online: bool
+
+USUARIOS = {
+    "admin": {"email": "admin@test.com", "password": "123", "online": False}
+}
+
+
 @app.post("/registro")
 async def registrar_usuario(usuario: UsuarioRegistro):
-    return {
-        "message": f"Usuario {usuario.username} registrado exitosamente en Bingo Distribuido!",
+    if usuario.username in USUARIOS:
+        raise HTTPException(status_code=400, detail="El nombre de usuario ya existe")
+        
+    USUARIOS[usuario.username] = {
         "email": usuario.email,
-        "status": "active"
+        "password": usuario.password,
+        "online": False
+    }
+    return {
+        "message": f"Usuario {usuario.username} registrado!",
+        "status": "success"
     }
 
-# Endpoint de términos y condiciones
+@app.post("/login")
+async def login_usuario(usuario: UsuarioLogin):
+    user_en_db = USUARIOS.get(usuario.username)
+    
+    if not user_en_db:
+        raise HTTPException(status_code=404, detail="Usuario no existe")
+        
+    if user_en_db["password"] != usuario.password:
+        raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+        
+    return {
+        "status": "success",
+        "message": "Login exitoso",
+        "username": usuario.username
+    }
+
+@app.post('/set_online')
+async def set_online(data: SetOnlineModel):
+    user = USUARIOS.get(data.username)
+    if not user:
+        return {"status": "error", "message": "Usuario no registrado"}
+    user['online'] = data.online
+    return {"status": "success", "username": data.username, "online": data.online}
+
+@app.get('/users')
+async def listar_usuarios():
+    return {"users": [{"username": k, "email": v['email'], "online": v['online']} for k, v in USUARIOS.items()]}
+
 @app.get("/terminos")
 async def obtener_terminos():
     return {
@@ -48,19 +98,15 @@ async def obtener_terminos():
         
         <h4>4. Propiedad Intelectual</h4>
         <p>Todo el código y contenido de Bingo Distribuido es propiedad de la Unimet como proyecto académico.</p>
-        
-      
         """,
-        
     }
 
-# Endpoint del video
 @app.get("/video")
 async def obtener_video():
     return {
         "titulo": "Video Promocional",
         "descripcion": "Demostración del sistema de bingo desarrollado con Pygame",
-        "url": "http://localhost:8000/static/videos/bingo-promo.mp4"
+        "url": "http://localhost:8001/static/videos/bingo-promo.mp4"
     }
 
 @app.get("/instalacion")
@@ -96,11 +142,12 @@ async def obtener_instrucciones_uso():
         ]
     }
 
-# Endpoint de salud
 @app.get("/")
 async def root():
     return {"message": "API de BINGO Distribuido funcionando correctamente"}
 
 if __name__ == "__main__":
     import uvicorn
+    print("Usuarios de prueba cargados:")
+    print(USUARIOS)
     uvicorn.run(app, host="0.0.0.0", port=8000)
