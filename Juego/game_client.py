@@ -51,8 +51,7 @@ class GameClient:
                 self.listen_thread.start()
  
                 self._set_api_online_status(True)
-                
-                return True, datos.get("carton"), datos.get("partida_id")
+                return True, datos.get("carton"), datos.get("partida_id"), datos.get('numeros_salidos'), datos.get('numeros_salidos_labels')
             else:
                 return False, None, None
                 

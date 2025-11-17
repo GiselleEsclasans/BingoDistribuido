@@ -2,6 +2,7 @@ import pygame
 import json
 from UI_manager import View
 from bingo_logic import BingoGame, get_pattern_description
+from bingo_utils import get_letter_for_number
 from game_client import GameClient
 import emoji 
 import math 
@@ -59,7 +60,14 @@ class UI_Juego(View):
         }
 
         self.client = GameClient(self.nickname, api_base_url, callbacks)
-        success, carton, partida_id = self.client.connect(host, port, jugadores, modo_juego)
+        ret = self.client.connect(host, port, jugadores, modo_juego)
+        if isinstance(ret, tuple) and len(ret) >= 3:
+            success, carton, partida_id = ret[0], ret[1], ret[2]
+            nums = ret[3] if len(ret) > 3 else None
+            labels = ret[4] if len(ret) > 4 else None
+        else:
+            success, carton, partida_id = ret, None, None
+            nums = labels = None
 
         if success:
             self.carton = carton or []
@@ -67,6 +75,21 @@ class UI_Juego(View):
             self.numeros_marcados = [0]
             
             self.inicializar_bingo_logic()
+
+            try:
+                if nums:
+                    for idx, n in enumerate(nums):
+                        lab = None
+                        if labels and idx < len(labels) and labels[idx]:
+                            lab = labels[idx]
+                        else:
+                            try:
+                                lab = f"{get_letter_for_number(int(n))}-{int(n)}"
+                            except Exception:
+                                lab = str(n)
+                        self._on_number_drawn(int(n), lab)
+            except Exception:
+                pass
             
             return True
         else:
@@ -107,7 +130,14 @@ class UI_Juego(View):
 
     
     def _on_number_drawn(self, numero, label):
-        self.numeros_salidos.append(label) 
+        try:
+            if label:
+                self.numeros_salidos.append(label)
+            else:
+                self.numeros_salidos.append(f"{numero}")
+        except Exception:
+            self.numeros_salidos.append(f"{numero}")
+
         self.numeros_salidos_int.append(numero)
     
         

@@ -1,7 +1,7 @@
 import threading
 import json
 import time
-from bingo_utils import generar_carton, verificar_patron_ganador
+from bingo_utils import generar_carton, verificar_patron_ganador, get_letter_for_number
 from partida_manager import ManejadorPartida
 
 class ClientHandler(threading.Thread):
@@ -100,11 +100,13 @@ class ClientHandler(threading.Thread):
                 'modo_juego': modo_juego,
                 'jugadores': {},
                 'numeros_salidos': [],
-                'activa': True
+                'activa': True,
+                'manager_started': False,
+                'min_jugadores': 2
             }
             print(f"Creando nueva partida: {partida_id}")
             manejador = ManejadorPartida(partida_id, self.server)
-            manejador.start()
+            self.server.partidas[partida_id]['manager'] = manejador
         
         carton = generar_carton()
         self.server.partidas[partida_id]['jugadores'][self.jugador_nick] = {
@@ -117,10 +119,25 @@ class ClientHandler(threading.Thread):
             'partida_id': partida_id
         }
         
+        partida = self.server.partidas[partida_id]
+
+        if len(partida['jugadores']) >= 2 and not partida.get('manager_started', False):
+            manejador = partida.get('manager')
+            if manejador:
+                try:
+                    manejador.start()
+                    partida['manager_started'] = True
+                    print(f"Partida {partida_id} iniciada automáticamente por tener >=2 jugadores.")
+                except RuntimeError:
+                    # Si el hilo ya fue iniciado anteriormente, ignorar
+                    print(f"Aviso: el manejador de {partida_id} ya fue iniciado.")
+
         respuesta = {
             "status": "success",
             "carton": carton,
-            "partida_id": partida_id
+            "partida_id": partida_id,
+            "numeros_salidos": partida['numeros_salidos'],
+            "numeros_salidos_labels": [f"{get_letter_for_number(n)}-{n}" for n in partida['numeros_salidos']]
         }
         self.send(respuesta)
         

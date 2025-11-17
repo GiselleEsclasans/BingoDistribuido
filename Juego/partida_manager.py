@@ -22,22 +22,23 @@ class ManejadorPartida(threading.Thread):
             return
 
         print(f"Iniciando hilo para partida {self.partida_id}...")
-
-        tiempo_espera = 30 
+        tiempo_espera = 30
         inicio_espera = time.time()
-        
-        while len(self.partida['jugadores']) < self.partida['max_jugadores']:
-            if not self.partida['activa']: 
+        min_jugadores = self.partida.get('min_jugadores', 2)
+
+        while len(self.partida['jugadores']) < min_jugadores:
+            if not self.partida['activa']:
                 print(f"Partida {self.partida_id} cancelada durante la espera.")
-                return 
-            
+                return
+
             if time.time() - inicio_espera > tiempo_espera:
                 if len(self.partida['jugadores']) < 1:
                     print(f"Partida {self.partida_id} cerrada por falta de jugadores.")
                     self.server.cerrar_partida(self.partida_id)
                     return
-                print(f"Partida {self.partida_id} iniciando por tiempo de espera.")
-                break 
+                print(f"Partida {self.partida_id} iniciando por tiempo de espera con {len(self.partida['jugadores'])} jugador(es).")
+                break
+
             time.sleep(1)
 
         self.server.broadcast_partida(self.partida_id, {
