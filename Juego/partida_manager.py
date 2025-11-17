@@ -1,6 +1,7 @@
 import threading
 import time
 import random
+from bingo_utils import get_letter_for_number
 
 class ManejadorPartida(threading.Thread):
     def __init__(self, partida_id, server_instance):
@@ -41,7 +42,7 @@ class ManejadorPartida(threading.Thread):
 
         self.server.broadcast_partida(self.partida_id, {
             "action": "game_start",
-            "message": f"¡La partida ha comenzado! Jugadores: {len(self.partida['jugadores'])}/{self.partida['max_jugadores']}"
+            "message": "Bingo ha comenzado!"
         })
         
         self.server.actualizar_lista_jugadores(self.partida_id)
@@ -56,15 +57,16 @@ class ManejadorPartida(threading.Thread):
                 break 
             self.partida['numeros_salidos'].append(numero)
             
+            etiqueta = f"{get_letter_for_number(numero)}-{numero}"
+            
+            
             self.server.broadcast_partida(self.partida_id, {
                 "action": "number_drawn",
-                "number": numero
+                "number": numero,
+                "label": etiqueta  
             })
    
-            for nick, datos_jugador in self.partida['jugadores'].items():
-                if numero in datos_jugador['carton']:
-                    if numero not in datos_jugador['numeros_marcados']:
-                         datos_jugador['numeros_marcados'].append(numero)
+            
             
             time.sleep(3)
 

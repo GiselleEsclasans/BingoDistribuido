@@ -5,6 +5,7 @@ from bingo_logic import BingoGame, get_pattern_description
 from game_client import GameClient
 import emoji 
 import math 
+import unicodedata
 
 from UI.ui_juego_renderer import JuegoRenderer
 
@@ -21,8 +22,9 @@ class UI_Juego(View):
         self.modo_juego = "regular"
         self.bingo_game = None
         self.carton = []
-        self.numeros_marcados = []
-        self.numeros_salidos = []
+        self.numeros_marcados = [0] 
+        self.numeros_salidos = []   
+        self.numeros_salidos_int = []
         self.ganador = None
         self.juego_iniciado = False
         self.puede_decir_bingo = False
@@ -38,7 +40,11 @@ class UI_Juego(View):
         
         self.nickname = nickname
         self.jugadores = jugadores
-        self.modo_juego = modo_juego
+        try:
+            modo_norm = unicodedata.normalize('NFKD', str(modo_juego)).encode('ascii', 'ignore').decode('ascii')
+            self.modo_juego = modo_norm.lower()
+        except Exception:
+            self.modo_juego = str(modo_juego).lower()
         
         callbacks = {
             'on_number_drawn': self._on_number_drawn,
@@ -58,12 +64,13 @@ class UI_Juego(View):
         if success:
             self.carton = carton or []
             self.juego_iniciado = True
+            self.numeros_marcados = [0]
             
             self.inicializar_bingo_logic()
-            self.agregar_mensaje_sistema("🎮 Partida iniciada! Tu cartón está listo.")
+            
             return True
         else:
-            self.agregar_mensaje_sistema("❌ Error al conectar al servidor de juego")
+            self.agregar_mensaje_sistema("❌ Error al conectar")
             self.client = None
             return False
             
@@ -72,6 +79,7 @@ class UI_Juego(View):
         self.carton = []
         self.numeros_marcados = []
         self.numeros_salidos = []
+        self.numeros_salidos_int = []
         self.ganador = None
         self.puede_decir_bingo = False
         self.chat_lines = []
@@ -98,18 +106,20 @@ class UI_Juego(View):
             self.bingo_game = None
 
     
-    def _on_number_drawn(self, numero):
-        self.numeros_salidos.append(numero)
-        self.agregar_mensaje_sistema(f"🎲 Número sorteado: {numero}")
+    def _on_number_drawn(self, numero, label):
+        self.numeros_salidos.append(label) 
+        self.numeros_salidos_int.append(numero)
+    
         
     def _on_bingo_called(self, ganador, motivo):
         self.ganador = ganador
-        self.agregar_mensaje_sistema(f"🏆 {ganador} dice BINGO! ({motivo})")
+        self.agregar_mensaje_sistema(f"🏆 {ganador} dice BINGO!")
         self.puede_decir_bingo = False
         
     def _on_game_over(self, ganador):
         self.juego_iniciado = False
-        self.agregar_mensaje_sistema(f"🎉 ¡Juego terminado! Ganador: {ganador}")
+        self.agregar_mensaje_sistema(f"🎉 ¡Juego terminado!")
+        self.agregar_mensaje_sistema(f"Ganador: {ganador}")
         
     def _on_chat_message(self, nick, texto):
         self.agregar_mensaje_chat(nick, texto)
@@ -134,7 +144,8 @@ class UI_Juego(View):
         self.agregar_mensaje_sistema(message or f"{nick} abandonó")
 
     def _on_game_start(self, message):
-        self.agregar_mensaje_sistema(message or 'La partida ha comenzado')
+     
+        self.agregar_mensaje_sistema(message or "🎮 Partida iniciada!")
         
     def _on_disconnect(self):
         self.juego_iniciado = False
@@ -151,7 +162,7 @@ class UI_Juego(View):
                 self.puede_decir_bingo = True
                 pattern_name = self.bingo_game.winning_pattern_name
                 pattern_desc = get_pattern_description(pattern_name, self.modo_juego)
-                self.agregar_mensaje_sistema(f"🎉 ¡Tienes {pattern_desc}! Presiona BINGO")
+               
     
     def _on_cell_clicked(self, numero):
         """
@@ -159,14 +170,20 @@ class UI_Juego(View):
         """
         if not self.juego_iniciado or not self.bingo_game:
             return
+        
+        if numero == 0:
+            return
             
         if numero in self.numeros_marcados:
             return
         
-        if numero in self.numeros_salidos:
+        if numero in self.numeros_salidos_int:
             self.numeros_marcados.append(numero)
             self.bingo_game.mark_number(numero)
-            self.verificar_patron_ganador()
+
+            if self.client:
+                self.client.send_mark_number(numero) 
+            self.verificar_patron_ganador() 
         else:
             self.agregar_mensaje_sistema(f"¡Aún no ha salido el {numero}!")
     
@@ -175,9 +192,11 @@ class UI_Juego(View):
         if event.type == pygame.MOUSEWHEEL:
             mx, my = pygame.mouse.get_pos()
             if self.renderer.chat_rect.collidepoint(mx, my):
-                self.chat_scroll_offset -= event.y
-                max_scroll = max(0, len(self.chat_lines) - self.chat_visible_lines)
-                self.chat_scroll_offset = max(0, min(self.chat_scroll_offset, max_scroll))
+                visual_lines = self.renderer._build_visual_chat_lines(self, padding_x=10)
+                total_visual = len(visual_lines)
+                max_scroll = max(0, total_visual - self.chat_visible_lines)
+                new_offset = self.chat_scroll_offset - event.y
+                self.chat_scroll_offset = max(0, min(new_offset, max_scroll))
                 return
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -188,11 +207,12 @@ class UI_Juego(View):
                 self.manager.set_view('bienvenida')
                 return
                 
-            if self.puede_decir_bingo:
-                if self.renderer.bingo_button_rect.collidepoint(mx, my):
-                    self.decir_bingo()
+            if self.renderer.bingo_button_rect.collidepoint(mx, my):
+                if self.puede_decir_bingo:
                     self.puede_decir_bingo = False 
-                    return 
+        
+                self.decir_bingo()
+                return
 
             cell_index = self.renderer.get_cell_at_pos((mx, my), self)
             if cell_index is not None:
@@ -241,7 +261,7 @@ class UI_Juego(View):
         
     def _scroll_to_bottom(self):
         """Mueve el scroll al último mensaje."""
-        self.chat_scroll_offset = max(0, len(self.chat_lines) - self.chat_visible_lines)
+        self.chat_scroll_offset = 0
 
 
     def render(self, surface):

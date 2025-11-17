@@ -68,6 +68,9 @@ class ClientHandler(threading.Thread):
         elif action == 'chat_message':
             self.handle_chat_message(mensaje)
 
+        elif action == 'mark_number':
+            self.handle_mark_number(mensaje)
+
     def handle_join_game(self, mensaje):
         """Lógica para unir a un jugador a una partida."""
         self.jugador_nick = mensaje.get('nickname')
@@ -124,10 +127,34 @@ class ClientHandler(threading.Thread):
         self.server.broadcast_partida(partida_id, {
             "action": "player_joined",
             "player": self.jugador_nick,
-            "message": f"{self.jugador_nick} se unió a la partida"
+            "message": f"{self.jugador_nick} se unió!"
         })
         
         self.server.actualizar_lista_jugadores(partida_id)
+
+    def handle_mark_number(self, mensaje):
+        """Maneja cuando un cliente marca un número."""
+        if not self.jugador_nick or self.jugador_nick not in self.server.jugadores:
+            return
+        
+        partida_id = self.server.jugadores[self.jugador_nick].get('partida_id')
+        if not partida_id or partida_id not in self.server.partidas:
+            return
+        
+        partida = self.server.partidas[partida_id]
+        datos_jugador = partida['jugadores'].get(self.jugador_nick)
+        numero = mensaje.get('number')
+        
+        if not datos_jugador or numero is None:
+            return
+        
+        if numero in datos_jugador['carton'] and numero in partida['numeros_salidos']:
+            if numero not in datos_jugador['numeros_marcados']:
+                datos_jugador['numeros_marcados'].append(numero)
+                print(f"Jugador {self.jugador_nick} marcó el {numero}")
+        else:
+       
+            print(f"WARN: {self.jugador_nick} intentó marcar un número inválido: {numero}")
 
     def handle_call_bingo(self, mensaje):
         """Lógica para cuando un jugador canta BINGO."""
@@ -144,6 +171,13 @@ class ClientHandler(threading.Thread):
             return 
             
         datos_jugador = partida['jugadores'][self.jugador_nick]
+        try:
+            print(f"DEBUG: Verificando BINGO para {self.jugador_nick}")
+            print(f"  Carton (len={len(datos_jugador.get('carton',[]))}): {datos_jugador.get('carton')}")
+            print(f"  Numeros marcados en servidor: {datos_jugador.get('numeros_marcados')}")
+            print(f"  Numeros salidos en partida: {partida.get('numeros_salidos')}")
+        except Exception as e:
+            print(f"DEBUG error al imprimir estado: {e}")
 
         if verificar_patron_ganador(datos_jugador['carton'],
                                     datos_jugador['numeros_marcados'],
@@ -154,7 +188,7 @@ class ClientHandler(threading.Thread):
             self.server.broadcast_partida(partida_id, {
                 "action": "bingo_called",
                 "winner": self.jugador_nick,
-                "reason": f"BINGO - Modo {partida['modo_juego']}"
+                "reason": f"BINGO!"
             })
             
             self.server.broadcast_partida(partida_id, {
@@ -168,7 +202,7 @@ class ClientHandler(threading.Thread):
             self.send({
                 "action": "chat_message",
                 "nickname": "Sistema",
-                "message": "¡BINGO Falso! Sigues jugando."
+                "message": "No tienes BINGO!"
             })
 
     def handle_chat_message(self, mensaje):

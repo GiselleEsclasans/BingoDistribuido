@@ -101,7 +101,10 @@ class GameClient:
         
         if action == "number_drawn":
             if self.callbacks.get('on_number_drawn'):
-                self.callbacks['on_number_drawn'](mensaje.get("number"))
+                self.callbacks['on_number_drawn'](
+                    mensaje.get("number"), 
+                    mensaje.get("label")
+                )
         
         elif action == "game_over":
             if self.callbacks.get('on_game_over'):
@@ -155,6 +158,13 @@ class GameClient:
         """Envía la acción 'call_bingo' al servidor."""
         print(f"¡{self.nickname} canta BINGO (enviando al servidor)!")
         self._send_json({"action": "call_bingo"})
+    
+    def send_mark_number(self, number):
+        """Notifica al servidor que el jugador marcó un número."""
+        self._send_json({
+            "action": "mark_number",
+            "number": number
+        })
 
     def disconnect(self):
         """Desconecta al cliente del servidor y de la API."""

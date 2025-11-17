@@ -15,6 +15,7 @@ class GameServer:
     def iniciar(self):
         """Bucle principal que acepta nuevas conexiones."""
         self.server.bind((self.host, self.port))
+        self.server.settimeout(1.0)
         self.server.listen()
         print(f"🎮 Servidor de Juego escuchando en {self.host}:{self.port}")
         
@@ -25,9 +26,16 @@ class GameServer:
      
                 handler = ClientHandler(cliente, direccion, self)
                 handler.start()
-                
+
+            except socket.timeout:
+                continue 
+            except KeyboardInterrupt:
+                print("\n🛑 Servidor detenido manualmente.")
+                break
             except Exception as e:
                 print(f"Error aceptando conexión: {e}")
+        
+        self.server.close()
 
     def broadcast_partida(self, partida_id, mensaje):
         """Enviar mensaje a todos los jugadores de una partida."""
@@ -79,7 +87,7 @@ class GameServer:
                     self.broadcast_partida(partida_id, {
                         "action": "player_left",
                         "player": jugador_nick,
-                        "message": f"{jugador_nick} abandonó la partida"
+                        "message": f"{jugador_nick} ha abandonado"
                     })
                     
                     self.actualizar_lista_jugadores(partida_id)
