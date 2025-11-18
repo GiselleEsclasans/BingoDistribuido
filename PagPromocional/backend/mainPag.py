@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import os 
+import os
+import json 
 
 app = FastAPI(title="BINGODistribuido API", description="API para el sistema Bingo Distribuido")
 
@@ -13,6 +14,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Guarda los usuarios al cerrar la API"""
+    print("🔄 Cerrando API, guardando usuarios...")
+    guardar_usuarios()
+    print("✅ Usuarios guardados correctamente")
 
 static_directory = "static"
 if not os.path.exists(static_directory):
@@ -30,7 +38,35 @@ class UsuarioRegistro(BaseModel):
     email: str
     password: str
 
-USUARIOS = {}
+# Archivo para guardar usuarios
+USUARIOS_FILE = "usuarios_registrados.json"
+
+def cargar_usuarios():
+    """Carga los usuarios desde el archivo JSON si existe"""
+    if os.path.exists(USUARIOS_FILE):
+        try:
+            with open(USUARIOS_FILE, 'r', encoding='utf-8') as f:
+                usuarios = json.load(f)
+                print(f"✅ {len(usuarios)} usuarios cargados desde {USUARIOS_FILE}")
+                return usuarios
+        except Exception as e:
+            print(f"⚠️ Error al cargar usuarios: {e}")
+            return {}
+    else:
+        print(f"📝 Archivo {USUARIOS_FILE} no existe, iniciando con usuarios vacíos")
+        return {}
+
+def guardar_usuarios():
+    """Guarda los usuarios en el archivo JSON"""
+    try:
+        with open(USUARIOS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(USUARIOS, f, ensure_ascii=False, indent=2)
+        print(f"💾 Usuarios guardados en {USUARIOS_FILE}")
+    except Exception as e:
+        print(f"❌ Error al guardar usuarios: {e}")
+
+# Cargar usuarios al iniciar
+USUARIOS = cargar_usuarios()
 
 @app.post("/registro")
 async def registrar_usuario(usuario: UsuarioRegistro):
@@ -39,6 +75,9 @@ async def registrar_usuario(usuario: UsuarioRegistro):
         "password": usuario.password,
         "online": False
     }
+    
+    # Guardar usuarios en archivo JSON
+    guardar_usuarios()
 
     return {
         "message": f"Usuario {usuario.username} registrado exitosamente en Bingo Distribuido!",
@@ -58,6 +97,10 @@ async def set_online(data: SetOnlineModel):
     if not user:
         return {"status": "error", "message": "Usuario no registrado"}
     user['online'] = data.online
+    
+    # Guardar cambio de estado online
+    guardar_usuarios()
+    
     return {"status": "success", "username": data.username, "online": data.online}
 
 

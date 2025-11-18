@@ -38,7 +38,7 @@ class UI_Configuraciones(View):
             }
         
         self.players_buttons = [2, 4, 6, 8]
-        self.mode_buttons = ['Rápido', 'Regular', 'Blackout']
+        self.mode_buttons = ['Regular', 'Doble Diagonal', 'Blackout']
         
         self.music_enabled = True
 
@@ -69,9 +69,11 @@ class UI_Configuraciones(View):
             mode_label_y = btn_y + 60
             btn_y2 = mode_label_y + self.option_font.get_height() + 8
             for i, mode in enumerate(self.mode_buttons):
-                rect = pygame.Rect(box_x + padding + i*120, btn_y2, 100, 40)
+                rect = pygame.Rect(box_x + padding + i*150, btn_y2, 140, 40)
                 if rect.collidepoint(mx, my):
-                    self.manager.game_settings['modo'] = mode.lower() 
+                    # Convertir "Doble Diagonal" a "doble_diagonal" para mantener consistencia
+                    modo_key = mode.lower().replace(" ", "_")
+                    self.manager.game_settings['modo'] = modo_key 
 
     def toggle_music(self):
         """Activa o desactiva la música de fondo"""
@@ -175,9 +177,11 @@ class UI_Configuraciones(View):
 
         btn_y2 = mode_label_y + mode_label.get_height() + 8
         for i, mode in enumerate(self.mode_buttons):
-            rect = pygame.Rect(box_x + padding + i*120, btn_y2, 100, btn_h)
+            rect = pygame.Rect(box_x + padding + i*150, btn_y2, 140, btn_h)
             
-            is_selected = self.manager.game_settings['modo'] == mode.lower() 
+            # Comparar con el modo guardado (convertir ambos para la comparación)
+            modo_key = mode.lower().replace(" ", "_")
+            is_selected = self.manager.game_settings['modo'] == modo_key 
             
             btn_color = self.RED if is_selected else self.YELLOW
             try:

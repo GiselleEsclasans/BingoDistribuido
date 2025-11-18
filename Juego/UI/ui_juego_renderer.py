@@ -126,7 +126,7 @@ class JuegoRenderer:
                     pygame.draw.circle(surface, color_borde, (centro_x, centro_y), self.cell_radius, 3)
                     
                     if is_free_space:
-                        num_text = self.number_font.render("⭐", True, color_texto)
+                        num_text = self.emoji_font.render("⭐", True, color_texto)
                     else:
                         num_text = self.number_font.render(str(numero), True, color_texto)
                     num_rect = num_text.get_rect(center=(centro_x, centro_y))

@@ -33,10 +33,10 @@ class BingoGame:
 
         carton_marcado = [self.card[i] in self.marked_numbers for i in range(25)]
 
-        if self.game_mode == "rapido":
+        if self.game_mode == "regular":
             return self._check_line(carton_marcado)
-        elif self.game_mode == "regular":
-            return self._check_regular(carton_marcado)
+        elif self.game_mode == "doble_diagonal" or self.game_mode == "doble diagonal":
+            return self._check_doble_diagonal(carton_marcado)
         elif self.game_mode == "blackout":
             return self._check_blackout(carton_marcado)
         return False
@@ -57,11 +57,13 @@ class BingoGame:
             return True
         return False
     
-    def _check_regular(self, carton_marcado: List[bool]) -> bool:
-        """Verifica 4 esquinas + centro"""
-        patron_regular = [0, 4, 12, 20, 24] 
-        if all(carton_marcado[i] for i in patron_regular):
-            self.winning_pattern_name = "esquinas_y_centro"
+    def _check_doble_diagonal(self, carton_marcado: List[bool]) -> bool:
+        """Verifica ambas diagonales (patrón en X)"""
+        diagonal_principal = [0, 6, 12, 18, 24]
+        diagonal_secundaria = [4, 8, 12, 16, 20]
+        
+        if all(carton_marcado[i] for i in diagonal_principal) and all(carton_marcado[i] for i in diagonal_secundaria):
+            self.winning_pattern_name = "doble_diagonal"
             self.is_winner = True
             return True
         return False
@@ -77,11 +79,14 @@ class BingoGame:
 def get_pattern_description(pattern_name: str, game_mode: str) -> str:
     """Retorna una descripción legible del patrón ganador (versión 5x5)"""
     descriptions = {
-        "rapido": {
+        "regular": {
             "linea": "Línea completa",
         },
-        "regular": {
-            "esquinas_y_centro": "Esquinas y centro"
+        "doble_diagonal": {
+            "doble_diagonal": "Doble Diagonal (X)"
+        },
+        "doble diagonal": {
+            "doble_diagonal": "Doble Diagonal (X)"
         },
         "blackout": {
             "carton_lleno": "Cartón Lleno (Blackout)"
