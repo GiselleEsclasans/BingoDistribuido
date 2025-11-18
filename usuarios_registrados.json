@@ -2,31 +2,37 @@
   "admin": {
     "email": "admin@test.com",
     "password": "123",
-    "online": false
+    "online": true,
+    "puntos": 0
   },
   "gigi": {
     "email": "a@gmail.com",
     "password": "456",
-    "online": false
+    "online": false,
+    "puntos": 0
   },
   "pepe": {
     "email": "aa@gmail.com",
     "password": "456",
-    "online": false
+    "online": false,
+    "puntos": 0
   },
   "Pedro": {
     "email": "aa@gmail.com",
     "password": "456",
-    "online": false
+    "online": false,
+    "puntos": 0
   },
   "David": {
     "email": "a@gmail.com",
     "password": "456",
-    "online": false
+    "online": false,
+    "puntos": 0
   },
   "Raul": {
     "email": "a@gmail.com",
     "password": "456",
-    "online": false
+    "online": false,
+    "puntos": 0
   }
 }
